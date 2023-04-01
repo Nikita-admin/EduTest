@@ -1,6 +1,7 @@
 QT -= gui
 
-QT += network #Для работы с сетью
+QT += network
+QT += sql
 
 
 CONFIG += c++11 console
@@ -27,5 +28,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 HEADERS += \
+    database.h \
     functions.h \
     netserver.h

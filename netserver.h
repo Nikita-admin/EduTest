@@ -1,11 +1,11 @@
 #ifndef NETSERVER_H
 #define NETSERVER_H
+
 #include <QObject>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QtNetwork>
 #include <QByteArray>
-#include <QDebug>
 #include <QMap>
 
 class NetServer : public QObject
@@ -19,16 +19,9 @@ public slots:
     void ClientDisconnected();
     void ServerDataRead();
 private:
-    QTcpServer * TCPServer;
-    QMap<int, QTcpSocket*> TCPSockets;
+    QTcpServer *TCPServer;
+    QMap<QTcpSocket*, long long> Clients;
     int server_status;
 };
 
 #endif // NETSERVER_H
-
-
-
-
-
-
-
