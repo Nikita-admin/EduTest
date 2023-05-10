@@ -1,57 +1,92 @@
 #include "netserver.h"
 #include "functions.h"
-#include <QDebug>
 
 NetServer::~NetServer()
 {
-    TCPServer->close();
-    server_status = 0;
+    close();
+    server_is_up = false;
 }
 
-NetServer::NetServer(QObject *parent) : QObject(parent)
+NetServer::NetServer(QObject *parent) : QTcpServer(parent)
 {
-    TCPServer = new QTcpServer(this);
-    connect(TCPServer, &QTcpServer::newConnection,
-            this, &NetServer::NewConnection);
+    QFile certFile("../server/server.crt");
+    if (!certFile.open(QIODevice::ReadOnly))
+    {
+        qDebug() << "Error opening certificate file";
+        std::exit(1);
+    }
+    certificate = QSslCertificate(&certFile, QSsl::Pem);
+    certFile.close();
+    if (certificate.isNull())
+    {
+        qDebug() << "Error loading certificate";
+        std::exit(1);
+    }
 
-    if(!TCPServer->listen(QHostAddress::Any, 33333))
+    QFile keyFile("../server/server.key");
+    if (!keyFile.open(QIODevice::ReadOnly))
+    {
+        qDebug() << "Error opening key file";
+        std::exit(1);
+    }
+    privateKey = QSslKey(&keyFile, QSsl::Rsa, QSsl::Pem);
+    keyFile.close();
+    if (privateKey.isNull())
+    {
+        qDebug() << "Error loading key";
+        std::exit(1);
+    }
+
+    if(!listen(QHostAddress::Any, 33333))
     {
         qDebug() << "Error. Server is not started";
-    } else {
-        server_status = 1;
+        std::exit(1);
+    }
+    else
+    {
+        server_is_up = true;
         qDebug() << "Server is started";
     }
 }
 
-void NetServer::NewConnection()
+void NetServer::incomingConnection(qintptr socketDescriptor)
 {
-    if(server_status == 1)
+    if(server_is_up)
     {
         qDebug() << "New client connected";
-        QTcpSocket *Current_TCPSocket;
-        Current_TCPSocket = TCPServer->nextPendingConnection();
-        Current_TCPSocket->write("Hello, World!!! I am EduTest Server!\r\n");
-        long long connection_id = Current_TCPSocket->socketDescriptor();
-        Current_TCPSocket->write("Your connection ID: ");
-        Current_TCPSocket->write(QString::number(connection_id).toUtf8());
-        Current_TCPSocket->write("\r\n");
-        Clients.insert(Current_TCPSocket,connection_id);
-        connect(Current_TCPSocket, &QTcpSocket::readyRead,
-                this,&NetServer::ServerDataRead);
-        connect(Current_TCPSocket,&QTcpSocket::disconnected,
-                this,&NetServer::ClientDisconnected);
+        QSslSocket *Current_TCPSocket = new QSslSocket(this);
+
+        if (Current_TCPSocket->setSocketDescriptor(socketDescriptor))
+        {
+            connect(Current_TCPSocket, &QSslSocket::sslErrors,
+                    this, &NetServer::SSLErrors);
+
+            QSslConfiguration sslConfig = Current_TCPSocket->sslConfiguration();
+            sslConfig.setLocalCertificate(certificate);
+            sslConfig.setPrivateKey(privateKey);
+            Current_TCPSocket->setSslConfiguration(sslConfig);
+            Current_TCPSocket->startServerEncryption();
+
+            long long connection_id = Current_TCPSocket->socketDescriptor();
+            Clients.insert(Current_TCPSocket,connection_id);
+            connect(Current_TCPSocket, &QSslSocket::readyRead,
+                    this, &NetServer::ServerDataRead);
+            connect(Current_TCPSocket, &QSslSocket::disconnected,
+                    this, &NetServer::ClientDisconnected);
+        }
+        else
+        {
+            delete Current_TCPSocket;
+        }
     }
 }
 
 void NetServer::ServerDataRead()
 {
-    QTcpSocket *Current_TCPSocket = (QTcpSocket*)sender();
+    QSslSocket *Current_TCPSocket = (QSslSocket*)sender();
     QByteArray data_output;
     QString data_input;
-    while(Current_TCPSocket->bytesAvailable()>0)
-    {
-        data_input += Current_TCPSocket->readAll();
-    }
+    data_input += Current_TCPSocket->readAll();
     QString connection_id = QString::number(Current_TCPSocket->socketDescriptor());
     data_output = parsing(data_input, connection_id).toUtf8();
     Current_TCPSocket->write(data_output);
@@ -59,10 +94,18 @@ void NetServer::ServerDataRead()
 
 void NetServer::ClientDisconnected()
 {
-    QTcpSocket *Current_TCPSocket = (QTcpSocket*)sender();
+    QSslSocket *Current_TCPSocket = (QSslSocket*)sender();
     qDebug() << "Client disconnected";
     QString connection_id = QString::number(Clients.value(Current_TCPSocket));
     close_session(connection_id);
     Clients.remove(Current_TCPSocket);
     Current_TCPSocket->close();
+}
+
+void NetServer::SSLErrors(const QList<QSslError> &errors)
+{
+    for (const QSslError &error : errors)
+    {
+        qDebug() << "SSL error:" << error.errorString();
+    }
 }

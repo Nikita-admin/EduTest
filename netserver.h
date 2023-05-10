@@ -3,25 +3,27 @@
 
 #include <QObject>
 #include <QTcpServer>
-#include <QTcpSocket>
+#include <QSslSocket>
 #include <QtNetwork>
-#include <QByteArray>
-#include <QMap>
 
-class NetServer : public QObject
+class NetServer : public QTcpServer
 {
     Q_OBJECT
 public:
     explicit NetServer(QObject *parent = nullptr);
     ~NetServer();
-public slots:
-    void NewConnection();
+protected:
+    void incomingConnection(qintptr socketDescriptor) override;
+private slots:
     void ClientDisconnected();
     void ServerDataRead();
+    void SSLErrors(const QList<QSslError> &errors);
 private:
     QTcpServer *TCPServer;
-    QMap<QTcpSocket*, long long> Clients;
-    int server_status;
+    QMap<QSslSocket*, long long> Clients;
+    bool server_is_up = false;
+    QSslCertificate certificate;
+    QSslKey privateKey;
 };
 
 #endif // NETSERVER_H

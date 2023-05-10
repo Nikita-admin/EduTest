@@ -3,17 +3,19 @@
 
 #include "database.h"
 
-QString authentication(QString login, QString pass, QString connection_id)
+const int MAX_DATA_SIZE = 1024;
+
+QString authentication(const QString &login, const QString &pass, const QString &connection_id)
 {
-    QList<QString> query_list = {"SELECT * FROM Users WHERE login = :login and password = :password;",
-                              ":login", login,
-                              ":password", pass
-                             };
+    QList<QString> query_list = {"SELECT login FROM Users WHERE login = :login and password = :password;",
+                                 ":login", login,
+                                 ":password", pass
+                                };
     QString response = DataBase::Connect()->query_execute(query_list);
 
     if (response == "")
     {
-        return "auth+wrong\r\n";
+        return "auth+wrong";
     }
     else
     {
@@ -23,20 +25,54 @@ QString authentication(QString login, QString pass, QString connection_id)
                      };
         DataBase::Connect()->query_execute(query_list);
 
-        return "auth+ok\r\n";
+        return "auth+ok";
     }
 }
 
-QString registration(QString login, QString pass, QString name, QString last_name, QString patronymic_name, QString role)
+QString check_login(const QString &login)
 {
-    QList<QString> query_list = {"SELECT * FROM Users WHERE login = :login;",
-                              ":login", login
-                             };
+    QList<QString> query_list = {"SELECT login FROM Users WHERE login = :login;",
+                                 ":login", login
+                                };
+    QString response = DataBase::Connect()->query_execute(query_list);
+
+    if (response == "")
+    {
+        return "regcheck+ok";
+    }
+    else
+    {
+        return "regcheck+already";
+    }
+}
+
+QString get_name(const QString &connection_id)
+{
+    QList<QString> query_list = {"SELECT name FROM Users WHERE connection_id = :connection_id;",
+                                 ":connection_id", connection_id
+                                };
     QString response = DataBase::Connect()->query_execute(query_list);
 
     if (response != "")
     {
-        return "reg+already\r\n";
+        return "getname+ok+" + response;
+    }
+    else
+    {
+        return "getname+autherr";
+    }
+}
+
+QString registration(const QString &login, const QString &pass, const QString &name, const QString &last_name, const QString &patronymic_name, const QString &role)
+{
+    QList<QString> query_list = {"SELECT login FROM Users WHERE login = :login;",
+                                 ":login", login
+                                };
+    QString response = DataBase::Connect()->query_execute(query_list);
+
+    if (response != "")
+    {
+        return "reg+already";
     }
 
     if (role == "student")
@@ -65,28 +101,28 @@ QString registration(QString login, QString pass, QString name, QString last_nam
                      };
         DataBase::Connect()->query_execute(query_list);
     }
-    query_list = {"SELECT * FROM Users WHERE login = :login;",
+    query_list = {"SELECT login FROM Users WHERE login = :login;",
                   ":login", login
                  };
     response = DataBase::Connect()->query_execute(query_list);
 
     if (response == "")
     {
-        return "reg+error\r\n";
+        return "reg+error";
     }
-    return "reg+ok\r\n";
+    return "reg+ok";
 }
 
-bool check_answer(QString ans, int num)
+bool check_answer(const QString &ans, const int &num)
 {
     return true;
 }
 
-QString check_task(QString connection_id, QString task, QString ans)
+QString check_task(const QString &connection_id, const QString &task, const QString &ans)
 {
-    QList<QString> query_list = {"SELECT * FROM Users WHERE connection_id = :connection_id;",
-                              ":connection_id", connection_id
-                             };
+    QList<QString> query_list = {"SELECT login FROM Users WHERE connection_id = :connection_id;",
+                                 ":connection_id", connection_id
+                                };
     QString response = DataBase::Connect()->query_execute(query_list);
 
     if (response != "")
@@ -176,74 +212,107 @@ QString check_task(QString connection_id, QString task, QString ans)
                 DataBase::Connect()->query_execute(query_list);
             }
         }
-        return "check+ok\r\n";
+        return "check+ok";
     }
-    return "chek+autherr\r\n";
+    return "chek+autherr";
 }
 
-QString get_stat(QString connection_id)
+QString get_stat(const QString &connection_id)
 {
     QList<QString> query_list = {"SELECT role FROM Users WHERE connection_id = :connection_id;",
-                              ":connection_id", connection_id
-                             };
+                                 ":connection_id", connection_id
+                                };
     QString role = DataBase::Connect()->query_execute(query_list);
 
     QString response = "";
 
     if (role == "student;")
     {
-        QList<QString> query_list = {"SELECT task1_stat, task2_stat, task3_stat, task4_stat, task5_stat FROM Users "
-                                  "WHERE connection_id = :connection_id;",
-                                  ":connection_id", connection_id
-                                 };
+        QList<QString> query_list = {"SELECT name, last_name, patronymic_name, task1_stat, task2_stat, task3_stat, task4_stat, task5_stat FROM Users "
+                                     "WHERE connection_id = :connection_id;",
+                                     ":connection_id", connection_id
+                                    };
         response = DataBase::Connect()->query_execute(query_list);
-        return response;
+        return "stat+" + response;
     }
     else if (role == "teacher;")
     {
         QList<QString> query_list = {"SELECT name, last_name, patronymic_name, task1_stat, task2_stat, task3_stat, task4_stat, task5_stat FROM Users "
-                                  "WHERE role = 'student';"};
+                                     "WHERE role = 'student';"
+                                    };
         response = DataBase::Connect()->query_execute(query_list);
-        return response;
+        return "stat+" + response;
     }
-    return "stat+autherr\r\n";
+    return "stat+autherr";
 }
 
-void close_session(QString connection_id)
+QString changepass(const QString &newpass, const QString &connection_id)
+{
+    QList<QString> query_list = {"UPDATE Users SET pass = :pass WHERE connection_id = :connection_id;",
+                                ":pass", newpass,
+                                ":connection_id", connection_id
+                                };
+    DataBase::Connect()->query_execute(query_list);
+
+    return "changepass+ok";
+}
+
+void close_session(const QString &connection_id)
 {
     QList<QString> query_list = {"UPDATE Users SET connection_id = NULL WHERE connection_id = :connection_id;",
-                              ":connection_id", connection_id
-                             };
+                                 ":connection_id", connection_id
+                                };
     DataBase::Connect()->query_execute(query_list);
 }
 
-QString parsing(QString data, QString connection_id)
+QString parsing(const QString &data, const QString &connection_id)
 {
-    QString clear_data = data.left(data.lastIndexOf("\xd"));
-    QList<QString> parametrs = clear_data.split("+");
+    if (data.size() > MAX_DATA_SIZE) {
+        return "parsing+err";
+    }
+    else
+    {
+        QList<QString> parametrs = data.split("+");
 
-    if(parametrs[0] == "auth" and parametrs.count() == 3)
-    {
-       return authentication(parametrs[1], parametrs[2], connection_id);
+        if(parametrs[0] == "auth" and parametrs.count() == 3)
+        {
+           return authentication(parametrs[1], parametrs[2], connection_id);
+        }
+        else if(parametrs[0] == "regcheck" and parametrs.count() == 2)
+        {
+           return check_login(parametrs[1]);
+        }
+        else if(parametrs[0] == "reg" and parametrs.count() == 7)
+        {
+           return registration(parametrs[1], parametrs[2], parametrs[3], parametrs[4], parametrs[5], parametrs[6]);
+        }
+        else if(parametrs[0] == "check" and parametrs.count() == 3)
+        {
+           return check_task(connection_id, parametrs[1], parametrs[2]);
+        }
+        else if(parametrs[0] == "stat" and parametrs.count() == 1)
+        {
+           return get_stat(connection_id);
+        }
+        else if(parametrs[0] == "getname" and parametrs.count() == 1)
+        {
+           return get_name(connection_id);
+        }
+        else if(parametrs[0] == "changepass" and parametrs.count() == 2)
+        {
+           return changepass(parametrs[1], connection_id);
+        }
+        else if(parametrs[0] == "logout" and parametrs.count() == 1)
+        {
+           close_session(connection_id);
+           return "logout+ok";
+        }
+        else if(parametrs[0] == "hi")
+        {
+           return "ok";
+        }
     }
-    else if(parametrs[0] == "reg" and parametrs.count() == 7)
-    {
-       return registration(parametrs[1], parametrs[2], parametrs[3], parametrs[4], parametrs[5], parametrs[6]);
-    }
-    else if(parametrs[0] == "check" and parametrs.count() == 3)
-    {
-       return check_task(connection_id, parametrs[1], parametrs[2]);
-    }
-    else if(parametrs[0] == "stat" and parametrs.count() == 1)
-    {
-       return get_stat(connection_id);
-    }
-    else if(parametrs[0] == "logout" and parametrs.count() == 1)
-    {
-       close_session(connection_id);
-       return "logout+ok\r\n";
-    }
-    return "Error data parsing\r\n";
+    return "parsing+err";
 }
 
 #endif // FUNCTIONS_H

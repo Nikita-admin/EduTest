@@ -2,7 +2,6 @@
 #define DATABASE_H
 
 #include <QCoreApplication>
-#include <QVariant>
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlError>
@@ -28,10 +27,13 @@ class DataBase
     protected:
         DataBase()
         {
-            DB.setDatabaseName("./EduTest.db");
+            DB.setDatabaseName("../server/EduTest.db");
 
             if(!DB.open())
-                qDebug()<<DB.lastError().text();
+            {
+                qDebug()<<"Error opening DataBase";
+                std::exit(1);
+            }
         }
         DataBase(const DataBase &) = delete;
         DataBase &operator = (DataBase &) = delete;
