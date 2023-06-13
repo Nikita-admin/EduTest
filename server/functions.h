@@ -233,7 +233,7 @@ QString get_stat(const QString &connection_id)
                                      ":connection_id", connection_id
                                     };
         response = DataBase::Connect()->query_execute(query_list);
-        return "stat+" + response;
+        return "stat+student+" + response;
     }
     else if (role == "teacher;")
     {
@@ -241,20 +241,29 @@ QString get_stat(const QString &connection_id)
                                      "WHERE role = 'student';"
                                     };
         response = DataBase::Connect()->query_execute(query_list);
-        return "stat+" + response;
+        return "stat+teacher+" + response;
     }
     return "stat+autherr";
 }
 
-QString changepass(const QString &newpass, const QString &connection_id)
+QString changepass(const QString &oldpass, const QString &newpass, const QString &connection_id)
 {
-    QList<QString> query_list = {"UPDATE Users SET pass = :pass WHERE connection_id = :connection_id;",
-                                ":pass", newpass,
+    QList<QString> query_list = {"SELECT * FROM Users WHERE connection_id = :connection_id AND password = :password;",
+                                ":password", oldpass,
                                 ":connection_id", connection_id
                                 };
-    DataBase::Connect()->query_execute(query_list);
+    QString response = DataBase::Connect()->query_execute(query_list);
 
-    return "changepass+ok";
+    if (response != "")
+    {
+        query_list = {"UPDATE Users SET password = :password WHERE connection_id = :connection_id;",
+                     ":password", newpass,
+                     ":connection_id", connection_id
+                     };
+        DataBase::Connect()->query_execute(query_list);
+        return "changepass+ok";
+    }
+    return "changepass+err";
 }
 
 void close_session(const QString &connection_id)
@@ -268,7 +277,7 @@ void close_session(const QString &connection_id)
 QString parsing(const QString &data, const QString &connection_id)
 {
     if (data.size() > MAX_DATA_SIZE) {
-        return "parsing+err";
+        return "parsing+errsize";
     }
     else
     {
@@ -298,9 +307,9 @@ QString parsing(const QString &data, const QString &connection_id)
         {
            return get_name(connection_id);
         }
-        else if(parametrs[0] == "changepass" and parametrs.count() == 2)
+        else if(parametrs[0] == "changepass" and parametrs.count() == 3)
         {
-           return changepass(parametrs[1], connection_id);
+           return changepass(parametrs[1], parametrs[2], connection_id);
         }
         else if(parametrs[0] == "logout" and parametrs.count() == 1)
         {

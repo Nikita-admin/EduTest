@@ -6,6 +6,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QSqlRecord>
+#include <QFile>
 
 class DataBase;
 
@@ -27,6 +28,11 @@ class DataBase
     protected:
         DataBase()
         {
+            if (!QFile::exists("../server/EduTest.db")) {
+                qDebug() << "DataВase file does not exist";
+                std::exit(1);
+            }
+
             DB.setDatabaseName("../server/EduTest.db");
 
             if(!DB.open())

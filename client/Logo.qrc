@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/logo">
+        <file>EduTestLogo.png</file>
+        <file>WindowLogo.png</file>
+    </qresource>
+</RCC>
