@@ -27,7 +27,6 @@ void ChangePassword::on_ChangePasswordButton_clicked()
         if (ui->NewPasswordLine->text() == ui->NewPasswordRepeatLine->text())
         {
             NetClient::Connect()->SendData("changepass+" + PasswordHash(ui->OldPasswordLine->text()) + "+" + PasswordHash(ui->NewPasswordLine->text()));
-            this->close();
         }
         else
         {

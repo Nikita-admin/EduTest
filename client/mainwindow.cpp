@@ -132,8 +132,8 @@ void MainWindow::on_ReceiveStatData(QString data)
 
 void MainWindow::auth_ok_slot()
 {
-    ui_auth->close();
     disconnect(ui_auth,&AuthForm::auth_ok,this, &MainWindow::auth_ok_slot);
+    ui_auth->close();
     this->show();
     NetClient::Connect()->SendData("getname");
 }
@@ -252,6 +252,7 @@ void MainWindow::on_ReceiveLogoutData(QString data)
 
 void MainWindow::on_ChangePasswordButton_clicked()
 {
+    disconnect(NetClient::Connect(),&NetClient::ReceivePasswordChangeData,this,&MainWindow::on_ReceivePasswordChangeData);
     if (ui_change != nullptr)
     {
         delete ui_change;
@@ -263,6 +264,7 @@ void MainWindow::on_ChangePasswordButton_clicked()
 
 void MainWindow::on_ReceivePasswordChangeData(QString data)
 {
+    ui_change->close();
     QList<QString> parametrs = data.split("+");
     if (parametrs[1] == "ok")
     {
@@ -271,7 +273,7 @@ void MainWindow::on_ReceivePasswordChangeData(QString data)
     else
     {
         QMessageBox::warning(this, "EduTest", "Старый пароль неверный.");
-    }
+    }    
 }
 
 
